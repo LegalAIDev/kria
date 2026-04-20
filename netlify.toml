@@ -1,9 +1,8 @@
 [build]
-  command = ""
-  publish = "."
+  command = "npm run build"
+  publish = "dist"
 
-# This app is a static single-page prototype.
-# Ensure hard refreshes on any path load index.html.
+# Single-page app fallback so direct route loads resolve to the app shell.
 [[redirects]]
   from = "/*"
   to = "/index.html"
