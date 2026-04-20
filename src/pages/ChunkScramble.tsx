@@ -17,7 +17,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 export default function ChunkScramble() {
   const { prayerId } = useParams<{ prayerId: string }>();
   const [, setLocation] = useLocation();
-  const { addXp } = useGame();
+  const { addXp, completeActivity } = useGame();
 
   const prayer = prayers.find(p => p.id === prayerId);
   const chunks = prayer?.chunks ?? [];
@@ -67,6 +67,7 @@ export default function ChunkScramble() {
       const xp = 100;
       setXpEarned(xp);
       addXp(xp);
+      if (prayerId) completeActivity(prayerId, "scramble", false);
       setTimeout(() => setCompleted(true), 1200);
     } else if (placed.length > 0) {
       const partialPct = placed.filter((w, i) => w.id === correctOrder[i]).length / totalWords;
@@ -87,6 +88,7 @@ export default function ChunkScramble() {
       addXp(partialXp);
       setXpEarned(partialXp);
     }
+    if (prayerId) completeActivity(prayerId, "scramble", false);
     setCompleted(true);
   }
 

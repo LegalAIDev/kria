@@ -1,18 +1,20 @@
 import { useLocation } from "wouter";
 import { TopBar } from "@/components/TopBar";
 import { useGame } from "@/context/GameContext";
-import { prayers } from "@/data/prayers";
-import { getAvatarTitle } from "@/data/prayers";
+import { getAvatarTitle, getBossBadgeTier, prayers } from "@/data/prayers";
 import { Star, Flame, Zap, BookOpen } from "lucide-react";
 
 export default function Progress() {
   const [, setLocation] = useLocation();
-  const { state } = useGame();
+  const { state, getPrayerProgress } = useGame();
   const { current: avatarCurrent, next: avatarNext } = getAvatarTitle(state.xp);
 
-  const completedPrayers = prayers.filter(p => p.status === "complete");
-  const inProgressPrayers = prayers.filter(p => p.status === "in-progress");
+  const completedPrayers = prayers.filter(p => getPrayerProgress(p.id).status === "complete");
+  const inProgressPrayers = prayers.filter(p => getPrayerProgress(p.id).status === "in-progress");
   const totalBossAttempts = Object.values(state.bossRoundScores).reduce((sum, arr) => sum + arr.length, 0);
+  const recentHintUsage = Object.entries(state.hintUsageByDay)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-7);
 
   return (
     <div className="min-h-screen bg-background" data-testid="screen-progress">
@@ -93,6 +95,12 @@ export default function Progress() {
                 const prayer = prayers.find(p => p.id === prayerId);
                 if (!prayer) return null;
                 const best = Math.max(...scores);
+                const badgeTier = getBossBadgeTier(best);
+                const points = scores.map((score, i) => {
+                  const x = scores.length === 1 ? 0 : (i / (scores.length - 1)) * 100;
+                  const y = 100 - score;
+                  return `${x},${y}`;
+                }).join(" ");
                 return (
                   <div key={prayerId} className="bg-card border border-border rounded-2xl p-4 shadow-sm">
                     <div className="flex items-start justify-between mb-2">
@@ -106,6 +114,33 @@ export default function Progress() {
                         {best}
                       </div>
                     </div>
+                    {badgeTier && (
+                      <div className="mb-2">
+                        <span className={`font-sans text-xs px-2 py-0.5 rounded-full ${
+                          badgeTier === "gold"
+                            ? "bg-amber-100 text-amber-700"
+                            : badgeTier === "silver"
+                            ? "bg-slate-100 text-slate-700"
+                            : "bg-orange-100 text-orange-700"
+                        }`}>
+                          {badgeTier.charAt(0).toUpperCase() + badgeTier.slice(1)} badge
+                        </span>
+                      </div>
+                    )}
+                    {scores.length > 1 && (
+                      <div className="mb-3 bg-muted/40 rounded-xl p-2">
+                        <div className="font-sans text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Fluency trend</div>
+                        <svg viewBox="0 0 100 100" className="w-full h-16">
+                          <polyline
+                            fill="none"
+                            stroke="currentColor"
+                            className="text-primary"
+                            strokeWidth="4"
+                            points={points}
+                          />
+                        </svg>
+                      </div>
+                    )}
                     <div className="flex gap-1.5 flex-wrap">
                       {scores.map((score, i) => (
                         <div
@@ -138,6 +173,35 @@ export default function Progress() {
             </div>
           </div>
         )}
+
+        {/* Hint trend */}
+        <div className="mb-5 bg-card border border-border rounded-2xl p-4 shadow-sm">
+          <h2 className="font-syne font-bold text-base text-foreground mb-1">Hint Usage Trend</h2>
+          <p className="font-sans text-xs text-muted-foreground mb-3">Last 7 days</p>
+          {recentHintUsage.length === 0 ? (
+            <div className="font-sans text-sm text-muted-foreground">No hint usage recorded yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {recentHintUsage.map(([day, count], idx) => {
+                const prev = idx > 0 ? recentHintUsage[idx - 1][1] : count;
+                const trend = idx > 0 ? count - prev : 0;
+                return (
+                  <div key={day} className="flex items-center justify-between text-sm">
+                    <span className="font-sans text-muted-foreground">{day}</span>
+                    <span className="font-sans text-foreground">
+                      {count} hint{count === 1 ? "" : "s"}
+                      {idx > 0 && (
+                        <span className={`ml-2 text-xs ${trend <= 0 ? "text-primary" : "text-accent"}`}>
+                          {trend === 0 ? "→ steady" : trend < 0 ? `↓ ${Math.abs(trend)}` : `↑ ${trend}`}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Parent section */}
         <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">

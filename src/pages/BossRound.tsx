@@ -13,6 +13,7 @@ interface FeedbackReport {
   areasToWork: { hebrew: string; issue: string; tip: string }[];
   overall: string;
   readyToAdvance: boolean;
+  score?: number;
   transcript?: string;
 }
 
@@ -20,7 +21,7 @@ interface FeedbackReport {
 export default function BossRound() {
   const { prayerId } = useParams<{ prayerId: string }>();
   const [, setLocation] = useLocation();
-  const { addXp, setEnergy, state, addBossScore } = useGame();
+  const { addXp, setEnergy, state, addBossScore, completeActivity } = useGame();
 
   const prayer = prayers.find(p => p.id === prayerId);
   const chunks = prayer?.chunks ?? [];
@@ -151,18 +152,24 @@ export default function BossRound() {
       if (flashTimerRef.current) clearInterval(flashTimerRef.current!);
 
       if (res.ok) {
-        const data = await res.json() as { feedback: FeedbackReport; transcript: string };
+        const data = await res.json() as { feedback: FeedbackReport; transcript: string; score?: number };
+        const computedScore = Math.max(
+          0,
+          Math.min(100, data.score ?? data.feedback.score ?? 100 - ((data.feedback.areasToWork ?? []).length * 12)),
+        );
         const fb: FeedbackReport = {
           strength: data.feedback.strength ?? { chunk: "", comment: "Good reading!" },
           areasToWork: data.feedback.areasToWork ?? [],
           overall: data.feedback.overall ?? "Keep practicing!",
-          readyToAdvance: data.feedback.readyToAdvance ?? true,
+          readyToAdvance: data.feedback.readyToAdvance ?? computedScore >= 80,
+          score: computedScore,
           transcript: data.transcript,
         };
         setFeedback(fb);
         const scoreXp = fb.readyToAdvance ? 200 : 100;
         addXp(scoreXp);
-        addBossScore(prayerId ?? "", fb.readyToAdvance ? 85 : 65);
+        addBossScore(prayerId ?? "", computedScore);
+        if (prayerId) completeActivity(prayerId, "bossround", fb.readyToAdvance);
         if (fb.readyToAdvance) setEnergy(state.maxEnergy);
       } else {
         const txt = await readErrorText(res);
@@ -176,9 +183,12 @@ export default function BossRound() {
         areasToWork: [],
         overall: "Great effort! Keep practicing and you'll improve every time.",
         readyToAdvance: true,
+        score: 80,
       };
       setFeedback(fallback);
       addXp(100);
+      addBossScore(prayerId ?? "", 80);
+      if (prayerId) completeActivity(prayerId, "bossround", true);
       setAnalyzeError("Couldn't connect to AI coach — here's some general encouragement.");
     }
 
@@ -348,6 +358,9 @@ function FeedbackView({
 
       {/* Overall */}
       <div className="bg-primary/8 border border-primary/20 rounded-2xl p-4 text-center">
+        {typeof feedback.score === "number" && (
+          <div className="font-syne font-bold text-3xl text-primary mb-2">{feedback.score}</div>
+        )}
         <div className="font-sans text-base text-foreground leading-snug">{feedback.overall}</div>
       </div>
 
