@@ -4,6 +4,7 @@ import { TopBar } from "@/components/TopBar";
 import { prayers } from "@/data/prayers";
 import { useGame } from "@/context/GameContext";
 import { Mic, MicOff, Volume2, ChevronRight, Home } from "lucide-react";
+import { apiUrl, readErrorText } from "@/lib/api";
 
 type Phase = "ready" | "recording" | "processing" | "feedback";
 
@@ -15,7 +16,6 @@ interface FeedbackReport {
   transcript?: string;
 }
 
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
 
 export default function BossRound() {
   const { prayerId } = useParams<{ prayerId: string }>();
@@ -43,12 +43,15 @@ export default function BossRound() {
     if (!prayer || ttsLoading) return;
     setTtsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/prayer/tts`, {
+      const res = await fetch(apiUrl("/api/prayer/tts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: prayer.fullText, voice: "nova" }),
       });
-      if (!res.ok) throw new Error("TTS failed");
+      if (!res.ok) {
+        const txt = await readErrorText(res);
+        throw new Error(`TTS failed (${res.status})${txt ? `: ${txt}` : ""}`);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       if (audioRef.current) {
@@ -135,7 +138,7 @@ export default function BossRound() {
       }
       const base64 = btoa(binary);
 
-      const res = await fetch(`${API_BASE}/api/prayer/analyze-reading`, {
+      const res = await fetch(apiUrl("/api/prayer/analyze-reading"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -162,7 +165,8 @@ export default function BossRound() {
         addBossScore(prayerId ?? "", fb.readyToAdvance ? 85 : 65);
         if (fb.readyToAdvance) setEnergy(state.maxEnergy);
       } else {
-        throw new Error("Server error");
+        const txt = await readErrorText(res);
+        throw new Error(`Server error (${res.status})${txt ? `: ${txt}` : ""}`);
       }
     } catch (err) {
       console.error("Analyze error:", err);
