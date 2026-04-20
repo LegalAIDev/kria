@@ -1,0 +1,10 @@
+[build]
+  command = ""
+  publish = "."
+
+# This app is a static single-page prototype.
+# Ensure hard refreshes on any path load index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
