@@ -29,6 +29,7 @@ export default function BossRound() {
   const [phase, setPhase] = useState<Phase>("ready");
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [feedback, setFeedback] = useState<FeedbackReport | null>(null);
+  const [previousScore, setPreviousScore] = useState<number | undefined>(undefined);
   const [flashChunkIndex, setFlashChunkIndex] = useState(0);
   const [ttsLoading, setTtsLoading] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
@@ -168,6 +169,7 @@ export default function BossRound() {
         setFeedback(fb);
         const scoreXp = fb.readyToAdvance ? 200 : 100;
         addXp(scoreXp);
+        setPreviousScore(state.bossRoundScores[prayerId ?? ""]?.at(-1));
         addBossScore(prayerId ?? "", computedScore);
         if (prayerId) completeActivity(prayerId, "bossround", fb.readyToAdvance);
         if (fb.readyToAdvance) setEnergy(state.maxEnergy);
@@ -187,6 +189,7 @@ export default function BossRound() {
       };
       setFeedback(fallback);
       addXp(100);
+      setPreviousScore(state.bossRoundScores[prayerId ?? ""]?.at(-1));
       addBossScore(prayerId ?? "", 80);
       if (prayerId) completeActivity(prayerId, "bossround", true);
       setAnalyzeError("Couldn't connect to AI coach — here's some general encouragement.");
@@ -327,6 +330,7 @@ export default function BossRound() {
         {phase === "feedback" && feedback && (
           <FeedbackView
             feedback={feedback}
+            previousScore={previousScore}
             analyzeError={analyzeError}
             onHome={() => setLocation("/")}
             onRetry={() => setPhase("ready")}
@@ -339,11 +343,13 @@ export default function BossRound() {
 
 function FeedbackView({
   feedback,
+  previousScore,
   analyzeError,
   onHome,
   onRetry,
 }: {
   feedback: FeedbackReport;
+  previousScore: number | undefined;
   analyzeError: string | null;
   onHome: () => void;
   onRetry: () => void;
@@ -359,7 +365,18 @@ function FeedbackView({
       {/* Overall */}
       <div className="bg-primary/8 border border-primary/20 rounded-2xl p-4 text-center">
         {typeof feedback.score === "number" && (
-          <div className="font-syne font-bold text-3xl text-primary mb-2">{feedback.score}</div>
+          <>
+            <div className="font-syne font-bold text-3xl text-primary mb-1">{feedback.score}</div>
+            {typeof previousScore === "number" && (
+              <div className={`font-sans text-sm mb-2 ${feedback.score >= previousScore ? "text-primary" : "text-accent"}`}>
+                {feedback.score > previousScore
+                  ? `↑ +${feedback.score - previousScore} from last attempt`
+                  : feedback.score < previousScore
+                  ? `↓ ${feedback.score - previousScore} from last attempt`
+                  : "→ Same as last attempt"}
+              </div>
+            )}
+          </>
         )}
         <div className="font-sans text-base text-foreground leading-snug">{feedback.overall}</div>
       </div>

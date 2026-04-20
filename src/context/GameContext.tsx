@@ -49,6 +49,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state]);
 
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    setState(s => {
+      if (s.lastActiveDate === today) return s;
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const newStreak = s.lastActiveDate === yesterday ? s.streak + 1 : 1;
+      return { ...s, streak: newStreak, lastActiveDate: today };
+    });
+  }, []);
+
   const addXp = useCallback((amount: number) => {
     setState(s => ({ ...s, xp: s.xp + amount }));
   }, []);
