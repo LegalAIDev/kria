@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
@@ -67,14 +68,61 @@ function makeSilentWav(seconds = 1.4, sampleRate = 8000) {
   return buffer;
 }
 
+// OpenAI TTS voices: alloy, ash, coral, echo, fable, onyx, nova, sage, shimmer
+const OPENAI_VOICES = new Set(['alloy', 'ash', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer']);
+
+function openaiTts(text, voice) {
+  return new Promise((resolve, reject) => {
+    const payload = Buffer.from(JSON.stringify({
+      model: 'tts-1',
+      input: text,
+      voice,
+      response_format: 'mp3',
+    }));
+    const options = {
+      hostname: 'api.openai.com',
+      path: '/v1/audio/speech',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+        'Content-Length': payload.length,
+      },
+    };
+    const req = https.request(options, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`OpenAI TTS error ${res.statusCode}: ${Buffer.concat(chunks).toString()}`));
+        } else {
+          resolve(Buffer.concat(chunks));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
 async function handleApi(req, res) {
   if (req.method === 'POST' && req.url === '/api/prayer/tts') {
     const body = await readJsonBody(req);
     const text = `${body?.text ?? ''}`.trim();
-    const approxSeconds = Math.min(8, Math.max(1.2, text.length / 30));
-    const wav = makeSilentWav(approxSeconds);
-    res.writeHead(200, { 'Content-Type': 'audio/wav' });
-    res.end(wav);
+    const rawVoice = `${body?.voice ?? 'nova'}`.toLowerCase();
+    const voice = OPENAI_VOICES.has(rawVoice) ? rawVoice : 'nova';
+
+    if (process.env.OPENAI_API_KEY) {
+      const audio = await openaiTts(text, voice);
+      res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
+      res.end(audio);
+    } else {
+      const approxSeconds = Math.min(8, Math.max(1.2, text.length / 30));
+      const wav = makeSilentWav(approxSeconds);
+      res.writeHead(200, { 'Content-Type': 'audio/wav' });
+      res.end(wav);
+    }
     return true;
   }
 
