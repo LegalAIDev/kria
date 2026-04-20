@@ -4,8 +4,7 @@ import { TopBar } from "@/components/TopBar";
 import { prayers } from "@/data/prayers";
 import { useGame } from "@/context/GameContext";
 import { Play, Pause, RotateCcw, ChevronRight, Volume2 } from "lucide-react";
-
-const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+import { apiUrl, readErrorText } from "@/lib/api";
 
 export default function ListenFollow() {
   const { prayerId } = useParams<{ prayerId: string }>();
@@ -68,15 +67,15 @@ export default function ListenFollow() {
     setTtsLoading(true);
 
     try {
-      const res = await fetch(`${BASE}/api/prayer/tts`, {
+      const res = await fetch(apiUrl("/api/prayer/tts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: prayer.fullText, voice: "nova" }),
       });
 
       if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`TTS error ${res.status}: ${txt}`);
+        const txt = await readErrorText(res);
+        throw new Error(`TTS error ${res.status}${txt ? `: ${txt}` : ""}`);
       }
 
       const blob = await res.blob();
