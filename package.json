@@ -1,0 +1,10 @@
+{
+  "name": "kria-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static prototype for the Kria Hebrew fluency app",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}
