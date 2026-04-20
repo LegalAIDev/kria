@@ -20,6 +20,9 @@ export interface Prayer {
   fullText: string;
 }
 
+export type PrayerStatus = Prayer["status"];
+export type BadgeTier = "bronze" | "silver" | "gold";
+
 export const prayers: Prayer[] = [
   {
     id: "modeh-ani",
@@ -180,4 +183,34 @@ export function getAvatarTitle(xp: number) {
     }
   }
   return { current, next };
+}
+
+export function getPrayerOrderIndex(prayerId: string): number {
+  return prayers.findIndex((p) => p.id === prayerId);
+}
+
+export function getNextPrayerId(prayerId: string): string | null {
+  const idx = getPrayerOrderIndex(prayerId);
+  if (idx < 0 || idx + 1 >= prayers.length) return null;
+  return prayers[idx + 1].id;
+}
+
+export function orderChunksForPractice(
+  chunks: Chunk[],
+  chunkConfidence: Record<string, number>,
+): Chunk[] {
+  return [...chunks].sort((a, b) => {
+    const aScore = chunkConfidence[a.id] ?? 50;
+    const bScore = chunkConfidence[b.id] ?? 50;
+    if (aScore !== bScore) return aScore - bScore;
+    return b.srsDifficulty - a.srsDifficulty;
+  });
+}
+
+export function getBossBadgeTier(score: number | undefined): BadgeTier | null {
+  if (score === undefined) return null;
+  if (score >= 90) return "gold";
+  if (score >= 80) return "silver";
+  if (score >= 60) return "bronze";
+  return null;
 }

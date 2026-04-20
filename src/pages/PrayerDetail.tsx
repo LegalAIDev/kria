@@ -18,11 +18,13 @@ const UNITS: { id: ActivityUnit; label: string; description: string; icon: React
 export default function PrayerDetail() {
   const { prayerId } = useParams<{ prayerId: string }>();
   const [, setLocation] = useLocation();
-  const { state } = useGame();
+  const { state, getPrayerProgress } = useGame();
 
   const prayer = prayers.find(p => p.id === prayerId);
 
-  if (!prayer || prayer.status === "locked") {
+  const progress = prayer ? getPrayerProgress(prayer.id) : { status: "locked" as const, unit: 0 };
+
+  if (!prayer || progress.status === "locked") {
     setLocation("/");
     return null;
   }
@@ -31,11 +33,12 @@ export default function PrayerDetail() {
     setLocation(`/prayer/${prayerId}/${unit}`);
   }
 
-  const completedUnit = prayer.unit;
+  const completedUnit = progress.unit;
 
   const nextUnit = UNITS.find((u, i) => {
     const unitNum = i + 1;
-    if (prayer.status === "in-progress" && unitNum === completedUnit) return true;
+    if (progress.status === "in-progress" && completedUnit >= 4 && u.id === "bossround") return true;
+    if (progress.status === "in-progress" && unitNum === completedUnit) return true;
     return false;
   }) ?? UNITS[0];
 
@@ -63,7 +66,7 @@ export default function PrayerDetail() {
         </div>
 
         {/* Start CTA — only if in-progress */}
-        {prayer.status === "in-progress" && (
+        {progress.status === "in-progress" && (
           <button
             data-testid="button-start-activity"
             onClick={() => handleUnitTap(nextUnit.id)}
@@ -76,16 +79,16 @@ export default function PrayerDetail() {
         )}
 
         {/* Progress */}
-        {prayer.status === "in-progress" && (
+        {progress.status === "in-progress" && (
           <div className="mb-5">
             <div className="flex justify-between items-center mb-1.5">
               <span className="font-sans text-sm text-muted-foreground">Progress</span>
-              <span className="font-sans text-sm font-medium text-foreground">Step {prayer.unit} of {prayer.totalUnits}</span>
+              <span className="font-sans text-sm font-medium text-foreground">Step {progress.unit} of {prayer.totalUnits}</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div
                 className="bg-primary h-2 rounded-full transition-all"
-                style={{ width: `${(prayer.unit / prayer.totalUnits) * 100}%` }}
+                style={{ width: `${(progress.unit / prayer.totalUnits) * 100}%` }}
               />
             </div>
           </div>
@@ -96,9 +99,9 @@ export default function PrayerDetail() {
         <div className="space-y-2">
           {UNITS.map((unit, index) => {
             const unitNum = index + 1;
-            const isDone = unitNum < completedUnit || prayer.status === "complete";
-            const isCurrent = unitNum === completedUnit && prayer.status === "in-progress";
-            const isLocked = unitNum > completedUnit && prayer.status === "in-progress" && unit.id !== "scramble" && unit.id !== "bossround";
+            const isDone = unitNum < completedUnit || progress.status === "complete";
+            const isCurrent = unitNum === completedUnit && progress.status === "in-progress";
+            const isLocked = unitNum > completedUnit && progress.status === "in-progress" && unit.id !== "scramble" && !(unit.id === "bossround" && completedUnit >= 4);
             const isScramble = unit.id === "scramble";
 
             return (

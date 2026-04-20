@@ -129,92 +129,97 @@ See **Bugs & Gaps** section below.
 
 ### P0 — Broken Core Mechanics
 
-**Bug 1: SpeedTap Confidence Bar is invisible**
+**Bug 1: SpeedTap Confidence Bar is invisible** ✅ **FIXED**
 - `internalFillRef` tracks fill % via `requestAnimationFrame` but NO DOM element renders the bar
 - The core mechanic of this activity (teal bar fills upward → gold wash on tap) simply does not appear
-- Fix: Add a positioned `<div>` below the chunk card with height driven by `internalFillRef.current`, updated via a parallel state or direct DOM manipulation
+- Fix implemented: visible confidence bar rendered under card, updated from tracked fill state.
 - File: `src/pages/SpeedTap.tsx`
 
-**Bug 2: ChunkFlash audio button is fake**
+**Bug 2: ChunkFlash audio button is fake** ✅ **FIXED**
 - `handleAudio()` sets `audioPlaying=true` for 1.5s then clears it — no sound plays
-- Spec: tapping audio should call TTS (same API as ListenFollow)
-- File: `src/pages/ChunkFlash.tsx:36-39`
+- Fix implemented: button now calls `/api/prayer/tts` and plays returned audio blob.
+- File: `src/pages/ChunkFlash.tsx`
 
-**Bug 3: TTS and analysis API routes don't exist**
+**Bug 3: TTS and analysis API routes don't exist** 🟡 **PARTIALLY FIXED (local mock)**
 - `ListenFollow` POSTs to `/api/prayer/tts`
 - `BossRound` POSTs to `/api/prayer/analyze-reading`
 - `server.js` is a static file server with no API routes — these calls always 404
-- Fix options: (a) wire up Supabase Edge Functions, (b) add a dev Express server with OpenAI/ElevenLabs integration
+- Fix implemented: local mock routes now exist in `server.js` for `/api/prayer/tts` and `/api/prayer/analyze-reading`.
+- Outstanding: production-grade provider wiring (Supabase/OpenAI/ElevenLabs/Azure) still not implemented.
 - Files: `server.js`, `src/lib/api.ts`
 
-**Bug 4: No state persistence**
+**Bug 4: No state persistence** ✅ **FIXED (MVP localStorage)**
 - All game state (XP, streak, energy, boss scores, prayer progress) lives in React Context
 - Cleared on every page refresh — a session restart loses everything
-- Fix: Persist to `localStorage` on every state mutation (fast MVP) or Supabase (production)
+- Fix implemented: state hydrates from and persists to `localStorage`.
+- Outstanding: cloud sync/Supabase persistence.
 - File: `src/context/GameContext.tsx`
 
-**Bug 5: Prayer progression never advances**
+**Bug 5: Prayer progression never advances** ✅ **FIXED**
 - `prayer.unit` and `prayer.status` are static fields in `prayers.ts`
 - Completing ListenFollow → ChunkFlash → SpeedTap does not increment `prayer.unit`
 - The progress bar in PrayerDetail never moves; locked prayers stay locked
-- Fix: Move progression state into `GameContext` (keyed by prayerId) and mutate on activity completion
-- Files: `src/data/prayers.ts`, `src/context/GameContext.tsx`, all activity pages
+- Fix implemented: progression moved into `GameContext` (`prayerProgress`) and updated from activity completion handlers.
+- Files: `src/data/prayers.ts`, `src/context/GameContext.tsx`, activity pages
 
 ### P1 — Spec Compliance Gaps
 
-**Bug 6: SpeedTap missing star display**
+**Bug 6: SpeedTap missing star display** ✅ **FIXED**
 - Spec: on tap, stars (1–3) briefly appear based on Confidence Bar fill level (≥80%=3, ≥40%=2, else 1)
 - Currently calculated but never shown
-- File: `src/pages/SpeedTap.tsx:71-73`
-
-**Bug 7: SpeedTap missing energy meter in UI**
-- Spec: amber energy meter sits in top corner of SpeedTap screen
-- Energy is updated in state but not displayed on this screen
+- Fix implemented: 1–3 star feedback now briefly appears after each tap.
 - File: `src/pages/SpeedTap.tsx`
 
-**Bug 8: BossRound score is hardcoded**
+**Bug 7: SpeedTap missing energy meter in UI** ✅ **FIXED**
+- Spec: amber energy meter sits in top corner of SpeedTap screen
+- Energy is updated in state but not displayed on this screen
+- Fix implemented: energy meter now visible on SpeedTap screen.
+- File: `src/pages/SpeedTap.tsx`
+
+**Bug 8: BossRound score is hardcoded** ✅ **FIXED**
 - `addBossScore(prayerId, fb.readyToAdvance ? 85 : 65)` — always 85 or 65
 - Spec: real 0-100 score from AI analysis, shown with delta vs. previous attempt
-- File: `src/pages/BossRound.tsx:165`
+- Fix implemented: score now read/computed from analysis response and persisted in history.
+- File: `src/pages/BossRound.tsx`
 
-**Bug 9: ListenFollow shows transliteration automatically**
+**Bug 9: ListenFollow shows transliteration automatically** ✅ **FIXED**
 - The active chunk's transliteration renders automatically in an amber callout
 - Spec: transliteration hidden by default, only revealed by tapping the hint button (costs 1 hint)
-- File: `src/pages/ListenFollow.tsx:166-170`
+- Fix implemented: transliteration is hidden by default and revealed via hint action.
+- File: `src/pages/ListenFollow.tsx`
 
-**Bug 10: SRS engine records but never reads**
+**Bug 10: SRS engine records but never reads** 🟡 **PARTIALLY FIXED**
 - `chunkConfidence` is written via `recordChunkConfidence()` in SpeedTap
 - Never read anywhere — difficult chunks don't resurface more frequently
-- Spec calls for SM-2 algorithm influencing chunk order in ChunkFlash and SpeedTap
+- Fix implemented: chunk confidence now influences chunk ordering in ChunkFlash/SpeedTap.
+- Outstanding: true SM-2 scheduling model is still not implemented.
 
 ### P2 — Missing Features
 
-**11. No badge system**
+**11. No badge system** 🟡 **PARTIALLY FIXED**
 - Spec: bronze (60–79), silver (80–89), gold (90+) Boss Round badges; streak badges (7/30/60 days); Hard Mode badge
-- None implemented; `badgeTier` field exists on Prayer but is never set
+- Implemented: boss-score badge tiers (bronze/silver/gold) are now displayed from score history.
+- Outstanding: streak badges and Hard Mode badge still not implemented.
 
-**12. No fluency graph on Progress screen**
+**12. No fluency graph on Progress screen** ✅ **FIXED (MVP sparkline)**
 - Spec: Boss Round scores over time per prayer, as a line graph
-- Currently shows only a flat list of score chips
+- Implemented: per-prayer score trend sparkline on Progress.
 
-**13. No hint usage trend on Progress screen**
-- Spec: declining hint usage over time is a primary fluency signal
+**13. No hint usage trend on Progress screen** ✅ **FIXED**
+- Implemented: 7-day hint usage trend with directional comparison.
 
-**14. No parent recording playback**
+**14. No parent recording playback** ❌ **OUTSTANDING**
 - Spec: parent section shows Boss Round recordings with AI feedback alongside
-- Current parent section is a static data summary only
+- Still outstanding: parent playback list with stored recordings + feedback.
 
-**15. No offline support**
-- Spec requires Service Worker + IndexedDB for full offline play
-- Nothing implemented
+**15. No offline support** ❌ **OUTSTANDING**
+- Still outstanding: Service Worker + IndexedDB pipeline.
 
-**16. Hard Mode (nikud stripping)**
-- Unlocks after Boss Round score ≥90; earn a special badge
-- Not implemented
+**16. Hard Mode (nikud stripping)** ❌ **OUTSTANDING**
+- Still outstanding.
 
-**17. TTS pre-caching at 3 speeds**
-- Spec: audio pre-cached at 0.75x, 1.0x, 1.25x on first use
-- ListenFollow calls live API on every play; no caching
+**17. TTS pre-caching at 3 speeds** ❌ **OUTSTANDING**
+- Still outstanding: pre-cache and retrieval by speed.
 
 ---
 

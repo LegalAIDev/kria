@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { TopBar } from "@/components/TopBar";
 import { useGame } from "@/context/GameContext";
-import { prayers } from "@/data/prayers";
-import { getAvatarTitle } from "@/data/prayers";
+import { getAvatarTitle, getBossBadgeTier, prayers } from "@/data/prayers";
 import { ChevronRight, CheckCircle2, Lock, CircleDot, Star, Pencil, Check, X } from "lucide-react";
 
 export default function Home() {
-  const { state, setUserName } = useGame();
+  const { state, setUserName, getPrayerProgress } = useGame();
   const [, setLocation] = useLocation();
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(state.userName);
@@ -18,7 +17,7 @@ export default function Home() {
   const xpProgress = (state.xp - avatarCurrent.xpThreshold) / (avatarNext.xpThreshold - avatarCurrent.xpThreshold);
 
   function handlePrayerTap(prayer: typeof prayers[0]) {
-    if (prayer.status === "locked") return;
+    if (getPrayerProgress(prayer.id).status === "locked") return;
     setLocation(`/prayer/${prayer.id}`);
   }
 
@@ -129,9 +128,13 @@ export default function Home() {
           <h2 className="font-syne font-bold text-lg text-foreground mb-3">Prayer Map</h2>
           <div className="space-y-2">
             {prayers.map((prayer) => {
-              const isLocked = prayer.status === "locked";
-              const isComplete = prayer.status === "complete";
-              const isInProgress = prayer.status === "in-progress";
+              const progress = getPrayerProgress(prayer.id);
+              const isLocked = progress.status === "locked";
+              const isComplete = progress.status === "complete";
+              const isInProgress = progress.status === "in-progress";
+              const scores = state.bossRoundScores[prayer.id] ?? [];
+              const bestScore = scores.length > 0 ? Math.max(...scores) : undefined;
+              const badgeTier = getBossBadgeTier(bestScore);
 
               return (
                 <button
@@ -159,15 +162,15 @@ export default function Home() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="font-sans text-xs text-muted-foreground">Level {prayer.level}</span>
-                        {prayer.badgeTier && (
+                        {badgeTier && (
                           <span className={`font-sans text-xs font-medium px-1.5 py-0.5 rounded-full ${
-                            prayer.badgeTier === "gold"
+                            badgeTier === "gold"
                               ? "bg-amber-100 text-amber-700"
-                              : prayer.badgeTier === "silver"
+                              : badgeTier === "silver"
                               ? "bg-slate-100 text-slate-600"
                               : "bg-orange-100 text-orange-700"
                           }`}>
-                            {prayer.badgeTier.charAt(0).toUpperCase() + prayer.badgeTier.slice(1)}
+                            {badgeTier.charAt(0).toUpperCase() + badgeTier.slice(1)}
                           </span>
                         )}
                       </div>
@@ -176,15 +179,15 @@ export default function Home() {
                     </div>
 
                     <div className="flex-shrink-0 text-right">
-                      {isComplete && prayer.bossBestScore !== undefined ? (
+                      {isComplete && bestScore !== undefined ? (
                         <div>
-                          <div className="font-syne font-bold text-primary text-lg">{prayer.bossBestScore}</div>
-                          <div className="font-sans text-xs text-muted-foreground">Gold</div>
+                          <div className="font-syne font-bold text-primary text-lg">{bestScore}</div>
+                          <div className="font-sans text-xs text-muted-foreground">{badgeTier ?? "Complete"}</div>
                         </div>
                       ) : isInProgress ? (
                         <div>
                           <div className="font-sans text-xs text-muted-foreground">In Progress</div>
-                          <div className="font-sans text-xs text-accent font-medium">Unit {prayer.unit} of {prayer.totalUnits}</div>
+                          <div className="font-sans text-xs text-accent font-medium">Unit {progress.unit} of {prayer.totalUnits}</div>
                         </div>
                       ) : (
                         <div>
@@ -200,7 +203,7 @@ export default function Home() {
                       <div className="w-full bg-muted rounded-full h-1.5">
                         <div
                           className="bg-accent h-1.5 rounded-full transition-all"
-                          style={{ width: `${(prayer.unit / prayer.totalUnits) * 100}%` }}
+                          style={{ width: `${(progress.unit / prayer.totalUnits) * 100}%` }}
                         />
                       </div>
                     </div>

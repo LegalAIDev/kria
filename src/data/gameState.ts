@@ -1,3 +1,10 @@
+import { prayers } from "@/data/prayers";
+
+export interface PrayerProgress {
+  unit: number;
+  status: "locked" | "in-progress" | "complete";
+}
+
 export interface GameState {
   userName: string;
   xp: number;
@@ -9,7 +16,17 @@ export interface GameState {
   currentActivity: "listen" | "chunkflash" | "speedtap" | "scramble" | "bossround" | null;
   bossRoundScores: Record<string, number[]>;
   chunkConfidence: Record<string, number>;
+  prayerProgress: Record<string, PrayerProgress>;
+  hintUsageByDay: Record<string, number>;
 }
+
+const initialPrayerProgress: Record<string, PrayerProgress> = prayers.reduce((acc, prayer) => {
+  acc[prayer.id] = {
+    unit: prayer.unit,
+    status: prayer.status,
+  };
+  return acc;
+}, {} as Record<string, PrayerProgress>);
 
 export const initialGameState: GameState = {
   userName: "",
@@ -22,4 +39,6 @@ export const initialGameState: GameState = {
   currentActivity: null,
   bossRoundScores: {},
   chunkConfidence: {},
+  prayerProgress: initialPrayerProgress,
+  hintUsageByDay: {},
 };

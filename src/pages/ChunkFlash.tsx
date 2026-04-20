@@ -1,24 +1,41 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { TopBar } from "@/components/TopBar";
-import { prayers } from "@/data/prayers";
+import { orderChunksForPractice, prayers } from "@/data/prayers";
 import { useGame } from "@/context/GameContext";
 import { Volume2, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { apiUrl, readErrorText } from "@/lib/api";
 
 export default function ChunkFlash() {
   const { prayerId } = useParams<{ prayerId: string }>();
   const [, setLocation] = useLocation();
-  const { addXp, state, useHint } = useGame();
+  const { addXp, state, useHint, completeActivity } = useGame();
 
   const prayer = prayers.find(p => p.id === prayerId);
-  const chunks = prayer?.chunks ?? [];
+  const chunks = orderChunksForPractice(prayer?.chunks ?? [], state.chunkConfidence);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showTranslit, setShowTranslit] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const [tapEffect, setTapEffect] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioBlobUrlRef = useRef<string | null>(null);
 
   const chunk = chunks[currentIndex];
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (audioBlobUrlRef.current) {
+        URL.revokeObjectURL(audioBlobUrlRef.current);
+        audioBlobUrlRef.current = null;
+      }
+    };
+  }, []);
 
   function handleRead() {
     setTapEffect(true);
@@ -26,6 +43,7 @@ export default function ChunkFlash() {
 
     if (currentIndex + 1 >= chunks.length) {
       addXp(75);
+      if (prayerId) completeActivity(prayerId, "chunkflash");
       setCompleted(true);
     } else {
       setCurrentIndex(i => i + 1);
@@ -33,9 +51,46 @@ export default function ChunkFlash() {
     }
   }
 
-  function handleAudio() {
+  async function handleAudio() {
+    if (!prayer) return;
     setAudioPlaying(true);
-    setTimeout(() => setAudioPlaying(false), 1500);
+    setAudioError(null);
+
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+
+      const res = await fetch(apiUrl("/api/prayer/tts"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: chunk?.hebrew ?? "", voice: "nova" }),
+      });
+
+      if (!res.ok) {
+        const txt = await readErrorText(res);
+        throw new Error(`TTS error ${res.status}${txt ? `: ${txt}` : ""}`);
+      }
+
+      const blob = await res.blob();
+      if (audioBlobUrlRef.current) URL.revokeObjectURL(audioBlobUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      audioBlobUrlRef.current = url;
+
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setAudioPlaying(false);
+      audio.onerror = () => {
+        setAudioPlaying(false);
+        setAudioError("Audio playback failed. Please try again.");
+      };
+
+      await audio.play();
+    } catch (err: any) {
+      setAudioPlaying(false);
+      setAudioError(err?.message ?? "Couldn't load audio. Please try again.");
+    }
   }
 
   function handleHint() {
@@ -105,6 +160,12 @@ export default function ChunkFlash() {
 
             {/* Controls */}
             <div className="mt-6 space-y-3">
+              {audioError && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 font-sans text-sm text-amber-800">
+                  {audioError}
+                </div>
+              )}
+
               <button
                 data-testid="button-i-can-read"
                 onClick={handleRead}

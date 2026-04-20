@@ -3,13 +3,13 @@ import { useParams, useLocation } from "wouter";
 import { TopBar } from "@/components/TopBar";
 import { prayers } from "@/data/prayers";
 import { useGame } from "@/context/GameContext";
-import { Play, Pause, RotateCcw, ChevronRight, Volume2 } from "lucide-react";
+import { Play, Pause, RotateCcw, ChevronRight, Volume2, Eye } from "lucide-react";
 import { apiUrl, readErrorText } from "@/lib/api";
 
 export default function ListenFollow() {
   const { prayerId } = useParams<{ prayerId: string }>();
   const [, setLocation] = useLocation();
-  const { addXp } = useGame();
+  const { addXp, state, useHint, completeActivity } = useGame();
 
   const prayer = prayers.find(p => p.id === prayerId);
   const [activeChunk, setActiveChunk] = useState(-1);
@@ -18,6 +18,7 @@ export default function ListenFollow() {
   const [ttsError, setTtsError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const [speed, setSpeed] = useState<0.75 | 1.0 | 1.25>(1.0);
+  const [showTranslitHint, setShowTranslitHint] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -46,6 +47,7 @@ export default function ListenFollow() {
     stopPlayback();
     setCompleted(false);
     setTtsError(null);
+    setShowTranslitHint(false);
   }
 
   function syncChunks(audio: HTMLAudioElement) {
@@ -101,6 +103,7 @@ export default function ListenFollow() {
         setActiveChunk(-1);
         setCompleted(true);
         addXp(50);
+        if (prayerId) completeActivity(prayerId, "listen");
       };
       audio.onerror = () => {
         setIsPlaying(false);
@@ -163,7 +166,7 @@ export default function ListenFollow() {
           </div>
         </div>
 
-        {activeChunk >= 0 && chunks[activeChunk] && (
+        {showTranslitHint && activeChunk >= 0 && chunks[activeChunk] && (
           <div className="mt-4 bg-accent/10 border border-accent/20 rounded-2xl p-3 text-center">
             <div className="font-sans text-sm text-foreground/80">{chunks[activeChunk].transliteration}</div>
           </div>
@@ -188,6 +191,24 @@ export default function ListenFollow() {
             </button>
           ))}
         </div>
+
+        <button
+          data-testid="button-hint-listenfollow"
+          onClick={() => {
+            if (showTranslitHint || state.hintsRemaining <= 0) return;
+            useHint();
+            setShowTranslitHint(true);
+          }}
+          disabled={showTranslitHint || state.hintsRemaining <= 0}
+          className={`mt-3 w-full bg-card border rounded-xl py-3 flex items-center justify-center gap-2 font-sans text-sm transition-all ${
+            showTranslitHint || state.hintsRemaining <= 0
+              ? "border-border text-muted-foreground/50 cursor-not-allowed opacity-60"
+              : "border-border text-muted-foreground hover:border-accent/40"
+          }`}
+        >
+          <Eye className="w-4 h-4" />
+          Show transliteration hint ({state.hintsRemaining})
+        </button>
 
         {ttsError && (
           <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 font-sans text-sm text-amber-800">

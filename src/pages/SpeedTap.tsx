@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import { TopBar } from "@/components/TopBar";
-import { prayers } from "@/data/prayers";
+import { orderChunksForPractice, prayers } from "@/data/prayers";
 import { useGame } from "@/context/GameContext";
 import { Volume2, ChevronRight, Eye } from "lucide-react";
 
@@ -21,10 +21,10 @@ const ENCOURAGEMENTS = [
 export default function SpeedTap() {
   const { prayerId } = useParams<{ prayerId: string }>();
   const [, setLocation] = useLocation();
-  const { addXp, setEnergy, state, useHint, recordChunkConfidence } = useGame();
+  const { addXp, setEnergy, state, useHint, recordChunkConfidence, completeActivity } = useGame();
 
   const prayer = prayers.find(p => p.id === prayerId);
-  const chunks = prayer?.chunks ?? [];
+  const chunks = orderChunksForPractice(prayer?.chunks ?? [], state.chunkConfidence);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isGoldWash, setIsGoldWash] = useState(false);
@@ -32,6 +32,8 @@ export default function SpeedTap() {
   const [completed, setCompleted] = useState(false);
   const [xpEarned, setXpEarned] = useState(0);
   const [encouragement, setEncouragement] = useState<string | null>(null);
+  const [fillPct, setFillPct] = useState(0);
+  const [tapStars, setTapStars] = useState<number | null>(null);
 
   const internalFillRef = useRef<number>(0);
   const animFrameRef = useRef<number | null>(null);
@@ -49,10 +51,12 @@ export default function SpeedTap() {
       const elapsed = now - startTime;
       const pct = startFill + (elapsed / remaining) * (100 - startFill);
       internalFillRef.current = Math.min(100, pct);
+      setFillPct(Math.min(100, pct));
 
       if (pct >= 100) {
         pausedAtRef.current = 0;
         internalFillRef.current = 0;
+        setFillPct(0);
         setTimeout(() => advanceChunk(), 100);
       } else {
         animFrameRef.current = requestAnimationFrame(tick);
@@ -79,11 +83,13 @@ export default function SpeedTap() {
     if (quality >= 2) setEnergy(state.energy + 1);
 
     setIsGoldWash(true);
+    setTapStars(quality);
     const msg = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
     setEncouragement(msg);
 
     setTimeout(() => setIsGoldWash(false), 350);
     setTimeout(() => setEncouragement(null), 1000);
+    setTimeout(() => setTapStars(null), 800);
 
     setTimeout(() => advanceChunk(), 500);
   }
@@ -91,10 +97,12 @@ export default function SpeedTap() {
   function advanceChunk() {
     pausedAtRef.current = 0;
     internalFillRef.current = 0;
+    setFillPct(0);
     setShowTranslit(false);
 
     const nextIndex = currentIndex + 1;
     if (nextIndex >= chunks.length) {
+      if (prayerId) completeActivity(prayerId, "speedtap");
       setCompleted(true);
     } else {
       setCurrentIndex(nextIndex);
@@ -116,6 +124,7 @@ export default function SpeedTap() {
   useEffect(() => {
     internalFillRef.current = 0;
     pausedAtRef.current = 0;
+    setFillPct(0);
     startTracking();
     return () => stopTracking();
   }, [currentIndex]);
@@ -146,6 +155,17 @@ export default function SpeedTap() {
                   }`}
                 />
               ))}
+            </div>
+
+            <div className="mb-4 flex justify-end">
+              <div className="bg-card border border-border rounded-xl px-3 py-2">
+                <div className="font-sans text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Energy</div>
+                <div className="flex gap-1">
+                  {Array.from({ length: state.maxEnergy }).map((_, i) => (
+                    <div key={i} className={`w-1.5 h-4 rounded-full ${i < state.energy ? "bg-amber-500" : "bg-border"}`} />
+                  ))}
+                </div>
+              </div>
             </div>
 
             <p className="font-sans text-sm text-muted-foreground text-center mb-4">
@@ -182,10 +202,25 @@ export default function SpeedTap() {
                   )}
                 </button>
 
+                <div className="mt-2 h-3 w-full rounded-full bg-border/70 overflow-hidden border border-border">
+                  <div
+                    className="h-full bg-primary transition-[width] duration-100 ease-linear"
+                    style={{ width: `${fillPct}%` }}
+                    data-testid="speedtap-confidence-fill"
+                  />
+                </div>
+
                 {encouragement && (
                   <div className="absolute -top-8 left-0 right-0 flex justify-center pointer-events-none">
                     <span className="font-syne font-bold text-primary text-lg animate-bounce">
                       {encouragement}
+                    </span>
+                  </div>
+                )}
+                {tapStars && (
+                  <div className="absolute -bottom-10 left-0 right-0 flex justify-center pointer-events-none">
+                    <span className="font-syne text-accent text-lg">
+                      {"★".repeat(tapStars)}
                     </span>
                   </div>
                 )}
