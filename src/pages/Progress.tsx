@@ -203,6 +203,30 @@ export default function Progress() {
           )}
         </div>
 
+        {/* Streak badges */}
+        {state.streak >= 7 && (
+          <div className="mb-5 bg-card border border-border rounded-2xl p-4 shadow-sm">
+            <h2 className="font-syne font-bold text-base text-foreground mb-3">Streak Badges</h2>
+            <div className="flex flex-wrap gap-2">
+              {state.streak >= 7 && (
+                <span className="font-sans text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-700">
+                  Week Warrior · 7 days
+                </span>
+              )}
+              {state.streak >= 30 && (
+                <span className="font-sans text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-700">
+                  Month Master · 30 days
+                </span>
+              )}
+              {state.streak >= 60 && (
+                <span className="font-sans text-xs px-3 py-1 rounded-full bg-primary/15 text-primary font-medium">
+                  Sixty Streak · 60 days
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Parent section */}
         <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
           <div className="font-syne font-semibold text-foreground mb-1">For Parents</div>

@@ -112,11 +112,12 @@ Minimum Hebrew display size: **28px** in activities, **42px** in SpeedTap/ChunkF
 - Onboarding (name entry) gates the app correctly
 - Home page: prayer map, XP, streak, energy, avatar title
 - PrayerDetail: activity list with lock/current/done state
-- ChunkFlash: chunk display, hint reveal, progress dots, completion
-- SpeedTap: chunk display, timer logic (ref-based), hint pause, gold wash, completion
+- ChunkFlash: chunk display, hint reveal, progress dots, TTS audio, completion
+- SpeedTap: confidence bar, star ratings, energy meter, timer logic, gold wash, completion
 - ChunkScramble: word pool, drag-to-place, check answer, partial credit
-- BossRound: mic permission, recording, processing interstitial, feedback display
-- Progress: stats summary, boss round history, parent section shell
+- BossRound: mic permission, recording, AI analysis, real score + delta vs. previous, processing interstitial, feedback display
+- Progress: stats summary, boss round history with sparkline, streak badges, hint trend, parent section
+- State persisted to localStorage (survives page refresh); streak incremented daily
 - Design system: full color palette, fonts, animations all configured
 
 ### What Doesn't Work Yet
@@ -155,6 +156,11 @@ See **Bugs & Gaps** section below.
 - Outstanding: cloud sync/Supabase persistence.
 - File: `src/context/GameContext.tsx`
 
+**Bug 4b: Streak counter never increments** ✅ **FIXED**
+- `state.streak` existed in `GameState` and displayed in UI but was never updated — stayed at 0 forever
+- Fix implemented: `lastActiveDate` added to state; on app load, streak increments if last active was yesterday, resets to 1 if gap > 1 day, unchanged if already visited today.
+- Files: `src/data/gameState.ts`, `src/context/GameContext.tsx`
+
 **Bug 5: Prayer progression never advances** ✅ **FIXED**
 - `prayer.unit` and `prayer.status` are static fields in `prayers.ts`
 - Completing ListenFollow → ChunkFlash → SpeedTap does not increment `prayer.unit`
@@ -179,7 +185,7 @@ See **Bugs & Gaps** section below.
 **Bug 8: BossRound score is hardcoded** ✅ **FIXED**
 - `addBossScore(prayerId, fb.readyToAdvance ? 85 : 65)` — always 85 or 65
 - Spec: real 0-100 score from AI analysis, shown with delta vs. previous attempt
-- Fix implemented: score now read/computed from analysis response and persisted in history.
+- Fix implemented: score now read/computed from analysis response; delta vs. previous attempt shown inline in feedback view.
 - File: `src/pages/BossRound.tsx`
 
 **Bug 9: ListenFollow shows transliteration automatically** ✅ **FIXED**
@@ -198,8 +204,8 @@ See **Bugs & Gaps** section below.
 
 **11. No badge system** 🟡 **PARTIALLY FIXED**
 - Spec: bronze (60–79), silver (80–89), gold (90+) Boss Round badges; streak badges (7/30/60 days); Hard Mode badge
-- Implemented: boss-score badge tiers (bronze/silver/gold) are now displayed from score history.
-- Outstanding: streak badges and Hard Mode badge still not implemented.
+- Implemented: boss-score badge tiers (bronze/silver/gold) displayed from score history; streak badges (Week Warrior 7d, Month Master 30d, Sixty Streak 60d) now shown in Progress when earned.
+- Outstanding: Hard Mode badge still not implemented.
 
 **12. No fluency graph on Progress screen** ✅ **FIXED (MVP sparkline)**
 - Spec: Boss Round scores over time per prayer, as a line graph
@@ -239,7 +245,7 @@ See **Bugs & Gaps** section below.
 | 10 | Aleinu | Snippet only | 0 chunks ✗ | locked |
 | 11 | Adon Olam | Snippet only | 0 chunks ✗ | locked |
 
-**Data note:** `prayers.ts:169` has a typo in Vav Virtuoso Hebrew: `"ו ִירְטוּאוֹז וָו"` — extraneous space before ירטואוז. Should be `"וִירְטוּאוֹז וָו"`.
+**Data note:** ~~`prayers.ts:172` has a typo in Vav Virtuoso Hebrew: `"ו ִירְטוּאוֹז וָו"` — extraneous space before ירטואוז~~ ✅ **FIXED** — now `"וִירְטוּאוֹז וָו"`.
 
 Content for locked prayers needs educator review before finalizing (see Open Questions).
 

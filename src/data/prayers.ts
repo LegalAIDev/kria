@@ -169,7 +169,7 @@ export const avatarTitles = [
   { title: "Gimmel Guardian", hebrew: "שׁוֹמֵר גִּימֶל", xpThreshold: 1500 },
   { title: "Dalet Decoder", hebrew: "מְפַעֵן דָּלֶת", xpThreshold: 3000 },
   { title: "Hey Hero", hebrew: "גִּיבּוֹר הֵא", xpThreshold: 6000 },
-  { title: "Vav Virtuoso", hebrew: "ו ִירְטוּאוֹז וָו", xpThreshold: 12000 },
+  { title: "Vav Virtuoso", hebrew: "וִירְטוּאוֹז וָו", xpThreshold: 12000 },
 ];
 
 export function getAvatarTitle(xp: number) {

@@ -18,6 +18,7 @@ export interface GameState {
   chunkConfidence: Record<string, number>;
   prayerProgress: Record<string, PrayerProgress>;
   hintUsageByDay: Record<string, number>;
+  lastActiveDate: string | null;
 }
 
 const initialPrayerProgress: Record<string, PrayerProgress> = prayers.reduce((acc, prayer) => {
@@ -41,4 +42,5 @@ export const initialGameState: GameState = {
   chunkConfidence: {},
   prayerProgress: initialPrayerProgress,
   hintUsageByDay: {},
+  lastActiveDate: null,
 };
