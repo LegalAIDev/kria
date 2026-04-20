@@ -4,7 +4,9 @@
   "private": true,
   "description": "Static prototype for the Kria Hebrew fluency app",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "npm --prefix kria run dev",
+    "dev": "npm --prefix kria run dev",
+    "build": "npm --prefix kria run build",
+    "serve": "npm --prefix kria run serve"
   }
 }
