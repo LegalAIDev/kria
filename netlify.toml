@@ -2,6 +2,16 @@
   command = "npm run build"
   publish = "dist"
 
+[[redirects]]
+  from = "/api/prayer/tts"
+  to = "/.netlify/functions/prayer-tts"
+  status = 200
+
+[[redirects]]
+  from = "/api/prayer/analyze-reading"
+  to = "/.netlify/functions/prayer-analyze-reading"
+  status = 200
+
 # Single-page app fallback so direct route loads resolve to the app shell.
 [[redirects]]
   from = "/*"
